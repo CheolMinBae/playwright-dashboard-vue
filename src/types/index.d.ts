@@ -5,6 +5,7 @@ export declare interface TestItem {
   duration: number
   workerIndex: number
   errorMessage?: string
+  diff?: string
 }
 
 export type TestItems = Array<TestItem>

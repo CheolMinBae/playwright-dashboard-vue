@@ -1,16 +1,16 @@
 <template>
   <div>
-    <v-row class="my-4 mx-2">
-      <v-text-field
-        v-model="search"
-        append-icon="mdi-magnify"
-        label="Search"
-        single-line
-        outlined
-        hide-details
-      ></v-text-field>
+    <v-text-field
+      class="ma-5"
+      v-model="search"
+      append-icon="mdi-magnify"
+      label="Search"
+      single-line
+      outlined
+      hide-details
+    ></v-text-field>
 
-      <v-menu transition="slide-x-transition">
+    <!-- <v-menu transition="slide-x-transition">
         <template v-slot:activator="{ on, attrs }">
           <v-btn color="primary" dark v-bind="attrs" v-on="on" class="ml-12">
             Build Selector
@@ -25,13 +25,16 @@
             <v-list-item-title>{{ item }}</v-list-item-title>
           </v-list-item>
         </v-list>
-      </v-menu>
-    </v-row>
+      </v-menu> -->
 
     <v-tabs dark background-color="primary" grow hide-slider show-arrows>
-      <v-tab v-on:click="search = ''">Selected Build: {{ build }} </v-tab>
+      <v-tab disabled class="white--text" v-on:click="search = ''"
+        >Selected Build: {{ build }}
+      </v-tab>
       <v-tab v-on:click="search = ''">Total: {{ testStats.total }} </v-tab>
-      <v-tab v-on:click="search = ''">Failed: {{ testStats.failed }}</v-tab>
+      <v-tab v-on:click="search = 'failed'"
+        >Failed: {{ testStats.failed }}</v-tab
+      >
     </v-tabs>
 
     <v-data-table
@@ -40,7 +43,6 @@
       :items="tests"
       :item-class="addColor"
       :items-per-page="-1"
-      item-key="id"
       class="elevation-1 mb-10"
       :sort-by="sortBy"
       :search="search"
@@ -50,6 +52,11 @@
         disablePagination: true,
       }"
     >
+      <template v-slot:[`item.errorMessage`]="{ item }">
+        <a target="_blank" :href="item.diff">
+          {{ "Screenshot Diff" }}
+        </a>
+      </template>
     </v-data-table>
   </div>
 </template>
@@ -58,7 +65,6 @@
 import Vue from "vue"
 import { Component, Prop } from "vue-property-decorator"
 import { TestItem, TestItems } from "@/types"
-//import data from "@/../builds/1/results.json"
 
 type TestStats = {
   total: number
@@ -71,6 +77,7 @@ export default class DataTable extends Vue {
   private expanded: unknown[] = []
   private sortBy = "Status"
   private search = ""
+  tests: TestItem[] = []
 
   private headers = [
     { text: "Name", value: "name" },
@@ -92,27 +99,18 @@ export default class DataTable extends Vue {
     return { total, failed }
   }
 
-  get builds() {
-    const builds = require.context("@/../builds", true, /^.*\.json$/)
-    return builds.keys().map((e) => e.slice(2, -13))
-  }
   get build() {
     return this.$route.query.build
   }
 
   async getData() {
-    import("@/../builds/" + this.build + "/results.json").then((res) => {
-      console.log(res.default)
-      console.log("test2")
-      return res.default
-    })
+    const response = await fetch(`builds/${this.build}/results.json`)
+    return response.json()
   }
 
-  get tests(): TestItems {
-    let data: any = this.getData()
-    console.log("test1")
+  async mounted() {
+    let data = await this.getData()
 
-    let tests = []
     for (let i in data.suites) {
       let e: TestItem = {
         name: data.suites[i].file.slice(0, -8),
@@ -122,13 +120,24 @@ export default class DataTable extends Vue {
         workerIndex: data.suites[i].specs[0].tests[0].results[0].workerIndex,
       }
       if (data.suites[i].specs[0].tests[0].results[0].status == "failed") {
-        e.errorMessage =
-          data.suites[i].specs[0].tests[0].results[0].error.message
+        if (
+          data.suites[i].specs[0].tests[0].results[0].error.message.includes(
+            "Snapshot comparison"
+          )
+        ) {
+          let links =
+            data.suites[i].specs[0].tests[0].results[0].error.message.split(":")
+          let diff = links[4].split("test_runner")
+          e.diff = "builds/" + this.build + diff[1]
+        } else {
+          e.errorMessage =
+            data.suites[i].specs[0].tests[0].results[0].error.message
+        }
       }
-      tests.push(e)
+      this.tests.push(e)
     }
-    return tests
   }
+
   addColor(item: TestItem): string {
     switch (item.status) {
       case "failed":
@@ -136,10 +145,6 @@ export default class DataTable extends Vue {
       case "timedOut":
         return "orange lighten-1"
     }
-  }
-
-  selectBuild(item: string) {
-    window.location.href = "?build=" + item
   }
 }
 </script>
