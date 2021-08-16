@@ -14,7 +14,7 @@
     "strictNullChecks": false,
     "baseUrl": ".",
     "resolveJsonModule": true,
-    "types": ["webpack-env", "cypress"],
+    "types": ["webpack-env", "cypress", "vuetify"],
     "paths": {
       "@/*": ["src/*"]
     },

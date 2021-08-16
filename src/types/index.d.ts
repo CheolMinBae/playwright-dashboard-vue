@@ -1,4 +1,4 @@
-export declare interface Tests {
+export declare interface TestItem {
   name: string
   status: string
   browser: string
@@ -6,3 +6,5 @@ export declare interface Tests {
   workerIndex: number
   errorMessage?: string
 }
+
+export type TestItems = Array<TestItem>
