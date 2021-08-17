@@ -52,10 +52,14 @@
         disablePagination: true,
       }"
     >
-      <template v-slot:[`item.errorMessage`]="{ item }">
-        <a target="_blank" :href="item.diff">
-          {{ "Screenshot Diff" }}
-        </a>
+      <template v-slot:[`item.links`]="{ item }">
+        <p v-if="item.screenshot">
+          <a :href="item.links.diff" target="_blank">Screenshot diff</a>
+          <br />
+          <a :href="item.links.expected" target="_blank">Screenshot expected</a>
+          <br />
+          <a :href="item.links.received" target="_blank">Screenshot received</a>
+        </p>
       </template>
     </v-data-table>
   </div>
@@ -64,7 +68,7 @@
 <script lang="ts">
 import Vue from "vue"
 import { Component, Prop } from "vue-property-decorator"
-import { TestItem, TestItems } from "@/types"
+import { TestItem, TestItems, TestLinks } from "@/types"
 
 type TestStats = {
   total: number
@@ -86,6 +90,7 @@ export default class DataTable extends Vue {
     { text: "Duration", value: "duration" },
     { text: "Worker Index", value: "workerIndex" },
     { text: "Error Message", value: "errorMessage" },
+    { text: "Links", value: "links" },
   ]
 
   get testStats(): TestStats {
@@ -125,15 +130,28 @@ export default class DataTable extends Vue {
             "Snapshot comparison"
           )
         ) {
-          let links =
-            data.suites[i].specs[0].tests[0].results[0].error.message.split(":")
-          let diff = links[4].split("test_runner")
-          e.diff = "builds/" + this.build + diff[1]
+          let links: TestLinks = {
+            diff: data.suites[i].specs[0].tests[0].results[0].error.message
+              .split(":")[4]
+              .split("test_runner")[1],
+            expected: data.suites[i].specs[0].tests[0].results[0].error.message
+              .split(":")[4]
+              .split("test_runner")[1]
+              .replace("diff", "excepted"),
+            received: data.suites[i].specs[0].tests[0].results[0].error.message
+              .split(":")[4]
+              .split("test_runner")[1]
+              .replace("diff", "received"),
+          }
+          e.screenshot = true
+          e.links = links
+          e.errorMessage = "Screenshot comparison failed"
         } else {
           e.errorMessage =
             data.suites[i].specs[0].tests[0].results[0].error.message
         }
       }
+
       this.tests.push(e)
     }
   }
